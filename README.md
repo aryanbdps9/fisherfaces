@@ -5,3 +5,6 @@
 - `PNGExtendedYale.tar.gz`: Extended Yale dataset. We will use it later(as it is large, so, longer training/testing time)
 - [Yale face dataset in png format](https://cseiitbacin-my.sharepoint.com/:f:/g/personal/aryan_cse_iitb_ac_in/Et6BnVVe5F5NjplmIFJL3WIB-BxYNXQNtb3E0or9-7dkMg?e=0iIo1x)
 - [Large Yale face dataset in png format](https://cseiitbacin-my.sharepoint.com/:f:/g/personal/aryan_cse_iitb_ac_in/EtswDEWht01Bq1GdRjRIOAABizoB696okFiLIQTusce02w?e=h4BR90)
+
+
+**Warning: Do NOT add folders containing images into the repo. git will become very slow. Add the folders to the end of .gitignore instead**
