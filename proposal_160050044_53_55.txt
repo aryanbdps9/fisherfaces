@@ -1,0 +1,16 @@
+Name, ID's:
+Ankit, 160050044
+Aryan, 160050053
+Sushant Tarun, 160050055
+# Paper to implement
+We will be implementing the paper "Eigenfaces vs Fisherfaces: Recognition Using Class Specific Linear Projection" by Peter N. Belhumear, Joao P. Hespanha and David J. Kriegman.
+
+# Datasets 
+The paper mentions two databases: yale face database and the other is developed by harvard robotics lab. We plan to use the first one as we could not find the second one online(all the links were dead). If we are able to find them on time, then certainly we would test our model on them too.
+
+# Testing
+We would do the same tests as described in the paper. With Yale Face Dataset, they had plotted the error rate vs. the number of principal components used for eigen face algorithm. It was still more than Fisherface algorithm. They had also plotted the error rate for each algorithm (Eigenface, Correlation, Linear Subspace, Eigenface w/o first 3 and Fisherface)
+
+## Also, if we get time, we would try to implement the faster RCNN paper by Girshick et. al. 
+
+# They used PASCAL VOC 2007 and MS COCO datasets for training and testing.
