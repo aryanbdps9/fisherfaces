@@ -1,4 +1,5 @@
 # fisherfaces
+CS663 project
 ## Description of various files:
 - [Yale face dataset in png format](https://cseiitbacin-my.sharepoint.com/:f:/g/personal/aryan_cse_iitb_ac_in/Et6BnVVe5F5NjplmIFJL3WIB-BxYNXQNtb3E0or9-7dkMg?e=0iIo1x) (download and extract this folder with the name pngyalefaces)
 - `helper.py`: contains helper functions which are useful in things like loading data, etc.
