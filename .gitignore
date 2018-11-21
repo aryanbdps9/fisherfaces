@@ -113,4 +113,5 @@ yalefaces/
 *.tiff
 *.pgm
 PNGExtendedYale/
+pngyalefaces/
 *.pdf

@@ -1,19 +1,30 @@
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import os
 import scipy.io
 import h5py
 import cv2
+import sys
+if (sys.version_info[0] == 3):
+    from functools import reduce
 
 
-def load_image(infilename, rescale=True):
-	img = Image.open(infilename)
-	img.load()
-	data = np.asarray(img, dtype="float32")
-	# print("max = ", np.amax(data))
-	if rescale:
-		data /= 255.0
-	return data
+def mean_normalise(X):
+    meann = np.mean(X, axis=0)
+    X = X - meann
+    return X
+
+def variance_normalise(X, newvar=1.0):
+    varr = np.var(X, axis=0)
+    X /= varr
+    X[X==np.inf] = 0
+    X[X == -np.inf] = 0
+    res = np.nan_to_num(X)
+    return res
+
+def mv_normalise(X, newvar=1.0):
+    return variance_normalise(mean_normalise(X), newvar=newvar)
 
 def make_fig(nparr, cmap=None):
 	if (cmap is None):
@@ -34,6 +45,47 @@ def rescale_mat(npa):
     else:
         print("unable_to_rescale")
         return np.zeros(npa.shape)
+
+def load_image(infilename, normalise=True):
+	img = Image.open(infilename)
+	img.load()
+	data = np.asarray(img, dtype="float32")
+	# print("max = ", np.amax(data))
+	if normalise:
+		data = mv_normalise(data)
+	return data
+
+def load_dataset(src_dir='./pngyalefaces', num_classes=15, shape=None, skip_every=11):
+    # returns X, classes and poses
+    filenames=sorted(os.listdir(src_dir))
+    filenames = [os.path.join(src_dir, filename) for filename in filenames]
+    if shape is None:
+        shape = load_image(filenames[0], normalise=False).shape
+    size = reduce(lambda x, y: x*y, shape)
+    res = np.zeros((len(filenames), size))
+    resy = []
+    cnt = 0
+    ctrl = 0
+    for file in filenames:
+        if (skip_every != 0 and ctrl % skip_every == 0):
+            ctrl += 1
+            continue
+        rect_img = load_image(file, normalise=False)
+        res[cnt, :] = rect_img.flatten()
+        resy.append(cnt)
+        cnt += 1
+        ctrl += 1
+    # print("res.shape = ", res.shape)
+    res = res[:cnt, :]
+    res = mv_normalise(res)
+    resy = np.array(resy)
+    row_per_class = cnt / num_classes
+    # if (skip_every != 0):
+    #     row_per_class -= 1
+    classes = np.floor(resy / row_per_class)
+    poses = resy % row_per_class
+    # print("load_dataset: shapes: res, classes, poses::", res.shape, classes.shape, poses.shape)
+    return res, classes, poses
 
 def read_mat(fname, as_np_array=True, rescale01 = True, get_keys=False):
     # function to read a .mat file and return the list of objects in that file
