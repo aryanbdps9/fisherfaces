@@ -28,6 +28,28 @@ def correlation_method():
 	print("num_correct = ", num_correct, "num_total = ", y.size)
 
 
+
+def myPCA4(k_tot, X, return_coeffs=True, drop_first_n=0):
+	X_meann = np.mean(X, axis=0).reshape((1, X.shape[1]))
+	X_shift = X - X_meann
+	L = np.matmul(X_shift, X_shift.T)
+	eigVal, eigVec = LA.eig(L)
+	eigVec = eigVec[:, :k_tot]
+	eigVal = eigVal[:k_tot]
+	eigVec = np.matmul(X_shift.T, eigVec)
+	eigVec = eigVec.real
+	eigVec /= np.sqrt(np.sum(eigVec*eigVec, axis=0)).reshape((1, k_tot))
+	drop_condition = (drop_first_n is not None and (drop_first_n > 0))
+	if drop_condition:
+		eigVal = eigVal[drop_first_n:]
+		eigVec = eigVec[:, drop_first_n:]
+	if (return_coeffs):
+		coeffs = np.matmul(X_shift, eigVec)
+		return [X_meann, eigVec, coeffs]
+	else:
+		return [X_meann, eigVec]
+
+
 def myPCA2(k_tot, X, drop_first_n=0, return_coeffs=True, do_plot_eigv=False):
 	# X can have non-zero mean; drop_first_n means drop first n eig_vectors and eig_vals
 	X_meann = np.mean(X, axis=0).reshape((1, X.shape[1]))
@@ -103,85 +125,69 @@ def myPCA3(k_tot, X, drop_first_n=0, return_coeffs=True):
 		return [X_meann, eigenVectors, coeffs]
 	return [X_meann, eigenVectors]
 """
-def myPCA4(k_tot, X, return_coeffs=True):
-	X_meann = np.mean(X, axis=0).reshape((1, X.shape[1]))
-	X_shift = X - X_meann
-	L = np.matmul(X_shift, X_shift.T)
-	eigVal, eigVec = LA.eig(L)
-	eigVec = eigVec[:, :k_tot]
-	eigVal = eigVal[:k_tot]
-	eigVec = np.matmul(X_shift.T, eigVec)
-	eigVec = eigVec.real
-	eigVec /= np.sqrt(np.sum(eigVec*eigVec, axis=0)).reshape((1, k_tot))
-	if (return_coeffs):
-		coeffs = np.matmul(X_shift, eigVec)
-		return [X_meann, eigVec, coeffs]
-	else:
-		return [X_meann, eigVec]
+def fisher3():
+	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
+	i_list = range(X_raw.shape[0])
+	num_correct = 0
+	for i_ind, i in enumerate(i_list):
+		print("i = ", i)
+		# print("(y_raw.shape) = ", (y_raw.shape))
+		X = np.zeros((X_raw.shape[0]-1, X_raw.shape[1]))
+		y = np.zeros((y_raw.shape[0]-1,1)).flatten()
+		X[:i, :], X[i:, :] = X_raw[:i, :], X_raw[i+1:, :]
+		# X_meann = np.mean(X, axis=0)
+		y[:i], y[i:] = y_raw[:i], y_raw[i+1:]
+		# take pca, mean_overall, note eigenvec, coeffs
+		classes, counts = np.unique(y, return_counts=True)
+		cl_list = classes.tolist()
+		num_classes = len(cl_list)
+		X_meann, PCAeigvec, Xcoeffs = myPCA4(X_raw.shape[0]-num_classes, X, return_coeffs=True)
+		PCAdmeans = np.mean(Xcoeffs, axis=0)
+		# compute class means in pca'd space
+		means = []
+		Xs = []
+		for c in classes:
+			Xs.append(Xcoeffs[y == c])
+			means.append(np.expand_dims(np.mean(Xs[-1], axis=0), axis=0))
+			Xs[-1] -= means[-1]
+		mu_mat = np.concatenate(means, axis=0) - PCAdmeans
+		mean_wts = np.array(counts).reshape((len(means), 1))
+		wtd_mu_mat = mu_mat * mean_wts
+		# compute sb, sw
+		Sb = np.matmul(mu_mat.T, wtd_mu_mat)
+		Sw = np.zeros(Sb.shape)
+		for c_ind, c in enumerate(classes):
+			Sw += np.matmul(Xs[c_ind].T, Xs[c_ind])
+		# compute lda_eigvecs
+		LDAeigvals, LDAeigvecs = SLA.eig(Sb, Sw)
+		LDAeigvecs = LDAeigvecs.real
+		# compute ldb_ev = pca_ev * lda_eigvecs
+		final_lda_ev = np.matmul(PCAeigvec, LDAeigvecs)
+		# find means of all classes
+		mu_mat += PCAdmeans
+		mu_mat = np.matmul(mu_mat, LDAeigvecs)
+		# find X in ldb space:
+		X_transformed = np.matmul(Xcoeffs, LDAeigvecs)
+		# keep only: ldb_ev, mean_overall, means of classes
+		# i.e. final_lda_ev, X_meann, mu_mat
 
-# def fisher2():
-# 	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
-# 	i_list = range(X_raw.shape[0])
-# 	num_correct = 0
-# 	for i_ind, i in enumerate(i_list):
-# 		print("i = ", i)
-# 		# print("(y_raw.shape) = ", (y_raw.shape))
-# 		X = np.zeros((X_raw.shape[0]-1, X_raw.shape[1]))
-# 		y = np.zeros((y_raw.shape[0]-1,1)).flatten()
-# 		X[:i, :], X[i:, :] = X_raw[:i, :], X_raw[i+1:, :]
-# 		# X_meann = np.mean(X, axis=0)
-# 		y[:i], y[i:] = y_raw[:i], y_raw[i+1:]
-# 		# take pca, mean_overall, note eigenvec, coeffs
-# 		classes, counts = np.unique(y, return_counts=True)
-# 		cl_list = classes.tolist()
-# 		num_classes = len(cl_list)
-# 		X_meann, PCAeigvec, Xcoeffs = myPCA4(X_raw.shape[0]-num_classes, X, return_coeffs=True)
-# 		PCAdmeans = np.mean(Xcoeffs, axis=0)
-# 		# compute class means in pca'd space
-# 		means = []
-# 		Xs = []
-# 		for c in classes:
-# 			Xs.append(Xcoeffs[y == c])
-# 			means.append(np.expand_dims(np.mean(Xs[-1], axis=0), axis=0))
-# 			Xs[-1] -= means[-1]
-# 		mu_mat = np.concatenate(means, axis=0) - PCAdmeans
-# 		mean_wts = np.array(counts).reshape((len(means), 1))
-# 		wtd_mu_mat = mu_mat * mean_wts
-# 		# compute sb, sw
-# 		Sb = np.matmul(mu_mat.T, wtd_mu_mat)
-# 		Sw = np.zeros(Sb.shape)
-# 		for c_ind, c in enumerate(classes):
-# 			Sw += np.matmul(Xs[c_ind].T, Xs[c_ind])
-# 		# compute lda_eigvecs
-# 		LDAeigvals, LDAeigvecs = SLA.eig(Sb, Sw)
-# 		LDAeigvecs = LDAeigvecs.real
-# 		# compute ldb_ev = pca_ev * lda_eigvecs
-# 		final_lda_ev = np.matmul(PCAeigvec, LDAeigvecs)
-# 		# find means of all classes
-# 		mu_mat += PCAdmeans
-# 		mu_mat = np.matmul(mu_mat, LDAeigvecs)
-# 		# find X in ldb space:
-# 		X_transformed = np.matmul(Xcoeffs, LDAeigvecs)
-# 		# keep only: ldb_ev, mean_overall, means of classes
-# 		# i.e. final_lda_ev, X_meann, mu_mat
+		# testing:
+		# subtract mean_overall
+		X_test = X_raw[i, :].reshape((1, X.shape[1])) - X_meann
+		# transform using ldb_ev
+		transformed_test = np.matmul(X_test, final_lda_ev)
+		# find nearest neighbor with means of classes
+		nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='euclidean').fit(X_transformed)
+		# nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='euclidean').fit(mu_mat)
+		dists, indices = nbrs.kneighbors(transformed_test)
+		if (y_raw[i] == y[indices[0,0]]):
+			print("i = ", i, ": correct")
+			num_correct += 1
+		else:
+			print("i = ", i, ": wrong")
+	return num_correct
 
-# 		# testing:
-# 		# subtract mean_overall
-# 		X_test = X_raw[i, :].reshape((1, X.shape[1])) - X_meann
-# 		# transform using ldb_ev
-# 		transformed_test = np.matmul(X_test, final_lda_ev)
-# 		# find nearest neighbor with means of classes
-# 		nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='euclidean').fit(X_transformed)
-# 		# nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='euclidean').fit(mu_mat)
-# 		dists, indices = nbrs.kneighbors(transformed_test)
-# 		if (y_raw[i] == y[indices[0,0]]):
-# 			print("i = ", i, ": correct")
-# 			num_correct += 1
-# 		else:
-# 			print("i = ", i, ": wrong")
-# 	return num_correct
-
-# 		# predict that class, and check if correct
+		# predict that class, and check if correct
 
 
 def fisher2():
@@ -246,27 +252,6 @@ def fisher2():
 
 		# predict that class, and check if correct
 
-
-
-def myPCA4(k_tot, X, return_coeffs=True, drop_first_n=0):
-	X_meann = np.mean(X, axis=0).reshape((1, X.shape[1]))
-	X_shift = X - X_meann
-	L = np.matmul(X_shift, X_shift.T)
-	eigVal, eigVec = LA.eig(L)
-	eigVec = eigVec[:, :k_tot]
-	eigVal = eigVal[:k_tot]
-	eigVec = np.matmul(X_shift.T, eigVec)
-	eigVec = eigVec.real
-	eigVec /= np.sqrt(np.sum(eigVec*eigVec, axis=0)).reshape((1, k_tot))
-	drop_condition = (drop_first_n is not None and (drop_first_n > 0))
-	if drop_condition:
-		eigVal = eigVal[drop_first_n:]
-		eigVec = eigVec[:, drop_first_n:]
-	if (return_coeffs):
-		coeffs = np.matmul(X_shift, eigVec)
-		return [X_meann, eigVec, coeffs]
-	else:
-		return [X_meann, eigVec]
 
 
 def eig_face_method(drop_first_n, k_vals):
@@ -451,8 +436,9 @@ def fisher():
 		# print("eigvecs.shape = ", eigvecs.shape)
 	return num_correct
 
-		
+
 print("fisher2() =", fisher2())
+# print("fisher2() =", fisher2())
 
 # correlation_method()
 linear()
