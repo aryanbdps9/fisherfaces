@@ -504,8 +504,8 @@ def fisher():
 def main():
 	correlation_accu, num_total = correlation_method()
 	# k_vals = [1, 5, 15, 40, 70, 100, 130, 150]
-	k_vals = [1, 60, 130]
-	# k_vals = [1, 5, 10, 15, 25, 50, 70, 90, 125, 150]
+	# k_vals = [1, 60, 130]
+	k_vals = [1, 5, 10, 15, 25, 50, 70, 90, 125, 150]
 	no_drop_eig_face = [x * 100.0 / num_total for x in eig_face_method(0, k_vals)]
 	drop_eig_face = [x * 100.0 / num_total for x in eig_face_method(3, k_vals)]
 	linear_accu, _ = linear()
@@ -521,7 +521,7 @@ def main():
 	plt.gca().legend(loc='lower right')  # show legend
 	# plt.figure(figsize=(15.0, 9.0))
 	fig.savefig("my_plot.png")
-	plt.figure()
+	# plt.figure()
 	plt.show()
 
 
