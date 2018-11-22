@@ -4,6 +4,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 from sklearn.neighbors import NearestNeighbors
 from numpy import linalg as LA
+import scipy.linalg as SLA
 
 debug = False
 # debug = True
@@ -166,17 +167,19 @@ def eig_face_driver():
 
 def fisher():
 	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
+	_, _, X_raw = myPCA2(X_raw.shape[0]-15, X_raw, return_coeffs=True)
 	print("loaded dataset")
 	i_list = range(X_raw.shape[0])
+	num_correct = 0
 	for i_ind, i in enumerate(i_list):
 		print("i = ", i)
 		# print("(y_raw.shape) = ", (y_raw.shape))
 		X = np.zeros((X_raw.shape[0]-1, X_raw.shape[1]))
 		y = np.zeros((y_raw.shape[0]-1,1)).flatten()
-		X[:i, :], X[i:, :] = X_raw[:i, :], X_raw[i + 1:, :]
+		X[:i, :], X[i:, :] = X_raw[:i, :], X_raw[i+1:, :]
+		X_meann = np.mean(X, axis=0)
 		y[:i], y[i:] = y_raw[:i], y_raw[i+1:]
 		classes, counts = np.unique(y, return_counts=True)
-		freqs = dict(zip(classes, counts))
 		means = []
 		Xs = []
 		# means = {}
@@ -184,17 +187,40 @@ def fisher():
 		for c in classes:
 			# means[c] = np.mean(X[y==c], axis=0)
 			Xs.append(X[y==c])
-			means.append(np.mean(Xs, axis=0))
+			means.append(np.expand_dims(np.mean(Xs[-1], axis=0), axis=0))
 			Xs[-1] -= means[-1]
-		meann = np.mean(X, axis=0)
+		meann = np.expand_dims(np.mean(X, axis=0), axis=0)
+		# [print(Xselem.shape) for Xselem in Xs]
+		# [print(term.shape) for term in means]
+		# print(meann.shape)
 		mu_mat = np.concatenate(means, axis=0) - meann
 		mean_wts = np.array(counts).reshape((mu_mat.shape[0], 1))
-		Sb = np.matmul(mu_mat.T, mu_mat*mean_wts)
-		Sw = np.zeros()
-		
+		wtd_mu_mat = mu_mat * mean_wts
+		# print("wtd_mu_mat.shape = ", wtd_mu_mat.shape)
+		Sb = np.matmul(mu_mat.T, wtd_mu_mat)
+		Sw = np.zeros((X.shape[1], X.shape[1]))
+		# print("Sw.shape = ", Sw.shape)
+		for c_ind, c in enumerate(classes):
+			Sw += np.matmul(Xs[c_ind].T, Xs[c_ind])
+		eigvals, eigvecs = LA.eig(np.matmul(LA.inv(Sw), Sb))
+		eigvecs = eigvecs.real[:,:len(classes)-1]
+		# print("eigvals\n", eigvals)
+		eigCoeffs = np.matmul(X-X_meann, eigvecs)
+		# print("eigvecs.shape")
+		X_test = X_raw[i, :].reshape((1, X.shape[1])) - X_meann
+		eigCoeffs_test = np.matmul(X_test, eigvecs)
+		nbrs = NearestNeighbors(n_neighbors=1, algorithm='auto', metric='euclidean').fit(eigCoeffs)
+		dists, indices = nbrs.kneighbors(eigCoeffs_test)
+		if (y[indices[0,0]] == y_raw[i]):
+			num_correct += 1
+		# print(eigvals)
+		# break
+		# eigvals, eigvecs = SLA.eigh(Sb, Sw, eigvals_only=False)
+		# print("eigvecs.shape = ", eigvecs.shape)
+	return num_correct
 
 		
-		
+print("fisher() =", fisher())
 
 # correlation_method()
 # eig_face_driver()
