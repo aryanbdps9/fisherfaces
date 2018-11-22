@@ -462,11 +462,11 @@ def main():
 	fisher_accu = fisher2(X_raw, y_raw) * 100.0 / num_total
 	# plt.figure(figsize=(15.0, 9.0))
 	fig = plt.figure()
-	plt.plot(k_vals, no_drop_eig_face, label="Eigenfaces")
-	plt.plot(k_vals, drop_eig_face, label="Eigenfaces w/o first 3 components")
-	plt.axhline(y=fisher_accu, label="Fisherfaces")
-	plt.axhline(y=linear_accu, label="Linear Subspace")
-	plt.axhline(y=correlation_accu, label="Correlation")
+	plt.plot(k_vals, no_drop_eig_face, color='C1', label="Eigenfaces")
+	plt.plot(k_vals, drop_eig_face, color='C2', label="Eigenfaces w/o first 3 components")
+	plt.axhline(y=fisher_accu, color='C3', label="Fisherfaces")
+	plt.axhline(y=linear_accu, color='C4', label="Linear Subspace")
+	plt.axhline(y=correlation_accu, color='C5', label="Correlation")
 	plt.gca().legend(loc='lower right')  # show legend
 	# plt.figure(figsize=(15.0, 9.0))
 	fig.savefig("my_plot.png")
