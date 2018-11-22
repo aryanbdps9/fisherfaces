@@ -248,6 +248,27 @@ def fisher2():
 
 
 
+def myPCA4(k_tot, X, return_coeffs=True, drop_first_n=0):
+	X_meann = np.mean(X, axis=0).reshape((1, X.shape[1]))
+	X_shift = X - X_meann
+	L = np.matmul(X_shift, X_shift.T)
+	eigVal, eigVec = LA.eig(L)
+	eigVec = eigVec[:, :k_tot]
+	eigVal = eigVal[:k_tot]
+	eigVec = np.matmul(X_shift.T, eigVec)
+	eigVec = eigVec.real
+	eigVec /= np.sqrt(np.sum(eigVec*eigVec, axis=0)).reshape((1, k_tot))
+	drop_condition = (drop_first_n is not None and (drop_first_n > 0))
+	if drop_condition:
+		eigVal = eigVal[drop_first_n:]
+		eigVec = eigVec[:, drop_first_n:]
+	if (return_coeffs):
+		coeffs = np.matmul(X_shift, eigVec)
+		return [X_meann, eigVec, coeffs]
+	else:
+		return [X_meann, eigVec]
+
+
 def eig_face_method(drop_first_n, k_vals):
 	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
 	print("loaded dataset")
@@ -265,7 +286,8 @@ def eig_face_method(drop_first_n, k_vals):
 		y = np.zeros((y_raw.shape[0]-1,1)).flatten()
 		X[:i, :], X[i:, :] = X_raw[:i, :], X_raw[i + 1:, :]
 		y[:i], y[i:] = y_raw[:i], y_raw[i+1:]
-		X_meann, eigVecs, eigCoeffs = myPCA2(min(X.shape[0], k_vals[0]+1), X, drop_first_n=drop_first_n)
+		# X_meann, eigVecs, eigCoeffs = myPCA2(min(X.shape[0], k_vals[0]+1), X, drop_first_n=drop_first_n)
+		X_meann, eigVecs, eigCoeffs = myPCA4(min(X.shape[0], k_vals[0]+1), X, drop_first_n=drop_first_n)
 		X = X - X_meann
 		X_test = X_raw[i,:].reshape((1, X.shape[1]))-X_meann
 		eigCoeffs_test = np.matmul(X_test, eigVecs)
@@ -309,6 +331,68 @@ def eig_face_driver():
 	plt.plot(k_vals, drop_eig_face)
 	plt.show()
 
+def linear():
+	X_raw, y_raw, z_raw = helper.load_dataset(skip_every=11) ###3, 5, 6
+	classes, counts = np.unique(y_raw, return_counts=True)
+	num_classes = classes.shape[0]
+	img_size = X_raw.shape[1]
+	num_img = X_raw.shape[0]
+	bases = np.zeros((num_classes, 3, img_size))
+	X_norm = X_raw/np.sqrt(np.sum(X_raw*X_raw, axis=1)).reshape(num_img,1)
+	# bases1 = X_raw[z_raw == 3]
+	# bases2 = X_raw[z_raw == 5]
+	# bases3 = X_raw[z_raw == 6]
+	bases[:,0,:] = X_norm[z_raw == 2]
+	bases[:,1,:] = X_norm[z_raw == 3]
+	bases[:,2,:] = X_norm[z_raw == 5]
+
+	for i in range(num_classes):
+		bases[i,1,:] = bases[i,1,:] - (np.matmul(bases[i,1,:], bases[i,0,:].T))*bases[i,0,:]
+		bases[i,2,:] = bases[i,2,:] - (np.matmul(bases[i,2,:], bases[i,0,:].T))*bases[i,0,:]
+		bases[i,2,:] = bases[i,2,:] - (np.matmul(bases[i,2,:], bases[i,1,:].T))*bases[i,1,:]
+		bases[i,0,:] /= np.sqrt(np.sum(bases[i,0,:]*bases[i,0,:]))
+		bases[i,1,:] /= np.sqrt(np.sum(bases[i,1,:]*bases[i,1,:]))
+		bases[i,2,:] /= np.sqrt(np.sum(bases[i,2,:]*bases[i,2,:]))
+
+
+	# bases[:,1,:] = bases[:,1,:] - (bases[:,1,:]*bases[:,0,:].T)*bases[:,0,:]
+	# bases[:,2,:] = bases[:,2,:] - (bases[:,2,:]*bases[:,0,:].T)*bases[:,0,:]
+
+	correct = 0
+	for i in range(num_img):
+		img = X_raw[i]
+		min_val = -1
+		ans = -1
+		for j in range(num_classes):
+			img1 = img.T
+			obt_img = (np.matmul(bases[j,0,:], img1))*bases[j,0,:] + (np.matmul(bases[j,1,:],img1))*bases[j,1,:] + (np.matmul(bases[j,2,:],img1))*bases[j,2,:]
+			diff = obt_img - img
+			diff_val = np.sqrt(np.sum(diff*diff))
+			if(min_val != -1):
+				if(min_val > diff_val):
+					min_val = diff_val
+					ans = j
+			else:
+				min_val = diff_val
+				ans = j
+
+		if(ans == y_raw[i]):
+			correct+=1
+
+	print("Correct Predictions = ", correct, "num_total = ", y_raw.size)
+
+
+
+
+
+
+	# np.sqrt(np.sum(eigVec*eigVec, axis=0)).reshape((1, k_tot))
+	# bases /= np.sqrt(np.sum(bases*bases, axis=2)).reshape(num_classes, 3)
+
+	# print(bases.shape)
+
+
+
 def fisher():
 	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
 	_, _, X_raw = myPCA4(X_raw.shape[0]-15, X_raw, return_coeffs=True)
@@ -346,10 +430,14 @@ def fisher():
 		# print("Sw.shape = ", Sw.shape)
 		for c_ind, c in enumerate(classes):
 			Sw += np.matmul(Xs[c_ind].T, Xs[c_ind])
-		eigvals, eigvecs = LA.eig(np.matmul(LA.inv(Sw), Sb))
+		eigvals, eigvecs = SLA.eig(Sb, Sw)#, eigvals_only=False)
+		# eigvals, eigvecs = LA.eig(np.matmul(LA.inv(Sw), Sb))
+		# eigvals, eigvecs = LA.eig(np.matmul(LA.inv(Sw), Sb))
 		eigvecs = eigvecs.real[:,:len(classes)-1]
 		# print("eigvals\n", eigvals)
 		eigCoeffs = np.matmul(X-X_meann, eigvecs)
+		mean_eigCoeffs = np.zeros((len(classes), len(classes)-1))
+		# for mean_ind in
 		# print("eigvecs.shape")
 		X_test = X_raw[i, :].reshape((1, X.shape[1])) - X_meann
 		eigCoeffs_test = np.matmul(X_test, eigvecs)
@@ -367,4 +455,6 @@ def fisher():
 print("fisher2() =", fisher2())
 
 # correlation_method()
+linear()
 # eig_face_driver()
+# print("fisher() =", fisher())
