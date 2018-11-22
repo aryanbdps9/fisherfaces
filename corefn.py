@@ -333,24 +333,73 @@ def linear():
 	# bases1 = X_raw[z_raw == 3]
 	# bases2 = X_raw[z_raw == 5]
 	# bases3 = X_raw[z_raw == 6]
-	bases[:,0,:] = X_norm[z_raw == 2]
-	bases[:,1,:] = X_norm[z_raw == 3]
-	bases[:,2,:] = X_norm[z_raw == 5]
+
+	indx = [2, 3, 5]
+	rep_indx = [6,4,6]
+	# rep_indx = [2,3,5]
+
+	bases[:,0,:] = X_norm[z_raw == indx[0]]
+	bases[:,1,:] = X_norm[z_raw == indx[1]]
+	bases[:,2,:] = X_norm[z_raw == indx[2]]
 
 	for i in range(num_classes):
 		bases[i,1,:] = bases[i,1,:] - (np.matmul(bases[i,1,:], bases[i,0,:].T))*bases[i,0,:]
+		bases[i,1,:] /= np.sqrt(np.sum(bases[i,1,:]*bases[i,1,:]))
+		
 		bases[i,2,:] = bases[i,2,:] - (np.matmul(bases[i,2,:], bases[i,0,:].T))*bases[i,0,:]
 		bases[i,2,:] = bases[i,2,:] - (np.matmul(bases[i,2,:], bases[i,1,:].T))*bases[i,1,:]
-		bases[i,0,:] /= np.sqrt(np.sum(bases[i,0,:]*bases[i,0,:]))
-		bases[i,1,:] /= np.sqrt(np.sum(bases[i,1,:]*bases[i,1,:]))
+		# bases[i,0,:] /= np.sqrt(np.sum(bases[i,0,:]*bases[i,0,:]))
 		bases[i,2,:] /= np.sqrt(np.sum(bases[i,2,:]*bases[i,2,:]))
-
-
-	# bases[:,1,:] = bases[:,1,:] - (bases[:,1,:]*bases[:,0,:].T)*bases[:,0,:]
-	# bases[:,2,:] = bases[:,2,:] - (bases[:,2,:]*bases[:,0,:].T)*bases[:,0,:]
+	
 
 	correct = 0
 	for i in range(num_img):
+		pose = int(z_raw[i])
+		# print(pose)
+		class1 = int(y_raw[i])
+		restore_base = np.zeros((3, img_size))
+		restore_base[:,:] = bases[class1,:,:]
+		if(pose == indx[0]):
+			continue
+			bases[class1,0,:] = X_norm[i+(rep_indx[0]-pose)]
+			
+			bases[class1,1,:] = X_norm[i+(indx[1]-pose)]
+			bases[class1,1,:] = bases[class1,1,:] - (np.matmul(bases[class1,1,:], bases[class1,0,:].T))*bases[class1,0,:]
+			bases[class1,1,:] /= np.sqrt(np.sum(bases[class1,1,:]*bases[class1,1,:]))
+			
+			bases[class1,2,:] = X_norm[i+(indx[2]-pose)]
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,0,:].T))*bases[class1,0,:]
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,1,:].T))*bases[class1,1,:]
+			bases[class1,2,:] /= np.sqrt(np.sum(bases[class1,2,:]*bases[class1,2,:]))
+			# bases[class1,0,:] /= np.sqrt(np.sum(bases[class1,0,:]*bases[class1,0,:]))
+		elif(pose == indx[1]):
+			# continue
+			bases[class1,1,:] = X_norm[i+(rep_indx[1]-pose)]
+			bases[class1,1,:] = bases[class1,1,:] - (np.matmul(bases[class1,1,:], bases[class1,0,:].T))*bases[class1,0,:]
+			bases[class1,1,:] /= np.sqrt(np.sum(bases[class1,1,:]*bases[class1,1,:]))
+			
+			bases[class1,2,:] = X_norm[i+(indx[2]-pose)]
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,0,:].T))*bases[class1,0,:]
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,1,:].T))*bases[class1,1,:]
+			bases[class1,2,:] /= np.sqrt(np.sum(bases[class1,2,:]*bases[class1,2,:]))
+			# bases[class1,0,:] /= np.sqrt(np.sum(bases[class1,0,:]*bases[class1,0,:]))
+		elif(pose == indx[2]):
+			continue
+			# print("base0 = ",bases[class1, 0,:])
+			# print("base1 = ",bases[class1, 1,:])
+			bases[class1,2,:] = X_norm[i+(rep_indx[2]-pose)]
+			# print("base2 = ",bases[class1, 2,:])
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,0,:].T))*bases[class1,0,:]
+			# print("base2 = ",bases[class1, 2,:])
+			bases[class1,2,:] = bases[class1,2,:] - (np.matmul(bases[class1,2,:], bases[class1,1,:].T))*bases[class1,1,:]
+			# print("base2 = ",bases[class1, 2,:])
+			# print("i = ",i, " class1 = ",class1, " pose = ", pose, " val = ", np.sqrt(np.sum(bases[class1,2,:]*bases[class1,2,:])))
+			bases[class1,2,:] /= np.sqrt(np.sum(bases[class1,2,:]*bases[class1,2,:]))
+			# bases[class1,1,:] = bases[class1,1,:] - (np.matmul(bases[class1,1,:], bases[class1,0,:].T))*bases[class1,0,:]
+			# bases[class1,0,:] /= np.sqrt(np.sum(bases[class1,0,:]*bases[class1,0,:]))
+			# bases[class1,1,:] /= np.sqrt(np.sum(bases[class1,1,:]*bases[class1,1,:]))
+
+
 		img = X_raw[i]
 		min_val = -1
 		ans = -1
@@ -369,6 +418,8 @@ def linear():
 
 		if(ans == y_raw[i]):
 			correct+=1
+		bases[class1,:,:] = restore_base
+
 
 	print("LinSub: Correct Predictions = ", correct, "num_total = ", y_raw.size)
 	return (correct * 100.0 / y_raw.size), y_raw.size
