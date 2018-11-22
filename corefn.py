@@ -26,6 +26,7 @@ def correlation_method():
 		printr[:,2]=dists
 		print("printr:\n", printr)
 	print("num_correct = ", num_correct, "num_total = ", y.size)
+	return num_correct*100.0 / y.size, y.size
 
 
 
@@ -125,8 +126,8 @@ def myPCA3(k_tot, X, drop_first_n=0, return_coeffs=True):
 		return [X_meann, eigenVectors, coeffs]
 	return [X_meann, eigenVectors]
 """
-def fisher3():
-	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
+def fisher3(X_raw, y_raw):
+	# X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
 	i_list = range(X_raw.shape[0])
 	num_correct = 0
 	for i_ind, i in enumerate(i_list):
@@ -141,6 +142,8 @@ def fisher3():
 		classes, counts = np.unique(y, return_counts=True)
 		cl_list = classes.tolist()
 		num_classes = len(cl_list)
+		if (i_ind == 0):
+			print("num_classes:", num_classes)
 		X_meann, PCAeigvec, Xcoeffs = myPCA4(X_raw.shape[0]-num_classes, X, return_coeffs=True)
 		PCAdmeans = np.mean(Xcoeffs, axis=0)
 		# compute class means in pca'd space
@@ -190,8 +193,8 @@ def fisher3():
 		# predict that class, and check if correct
 
 
-def fisher2():
-	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
+def fisher2(X_raw, y_raw):
+	# X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
 	i_list = range(X_raw.shape[0])
 	num_correct = 0
 	for i_ind, i in enumerate(i_list):
@@ -252,7 +255,10 @@ def fisher2():
 
 		# predict that class, and check if correct
 
-
+def fisher_driver():
+	X_raw, y_raw, poses = helper.load_dataset(skip_every=11)
+	print("fisher2(face reco:):", fisher2(X_raw, y_raw))
+	# print("fisher2(pose estimation):", fisher3(X_raw, poses))
 
 def eig_face_method(drop_first_n, k_vals):
 	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
@@ -364,8 +370,8 @@ def linear():
 		if(ans == y_raw[i]):
 			correct+=1
 
-	print("Correct Predictions = ", correct, "num_total = ", y_raw.size)
-
+	print("LinSub: Correct Predictions = ", correct, "num_total = ", y_raw.size)
+	return (correct * 100.0 / y_raw.size), y_raw.size
 
 
 
@@ -437,10 +443,35 @@ def fisher():
 	return num_correct
 
 
-print("fisher2() =", fisher2())
 # print("fisher2() =", fisher2())
-
+# print("fisher2() =", fisher2())
+# fisher_driver()
 # correlation_method()
-linear()
+# linear()
 # eig_face_driver()
 # print("fisher() =", fisher())
+def main():
+	correlation_accu, num_total = correlation_method()
+	# k_vals = [1, 5, 15, 40, 70, 100, 130, 150]
+	k_vals = [1, 60, 130]
+	# k_vals = [1, 5, 10, 15, 25, 50, 70, 90, 125, 150]
+	no_drop_eig_face = [x * 100.0 / num_total for x in eig_face_method(0, k_vals)]
+	drop_eig_face = [x * 100.0 / num_total for x in eig_face_method(3, k_vals)]
+	linear_accu, _ = linear()
+	X_raw, y_raw, _ = helper.load_dataset(skip_every=11)
+	fisher_accu = fisher2(X_raw, y_raw) * 100.0 / num_total
+	# plt.figure(figsize=(15.0, 9.0))
+	fig = plt.figure()
+	plt.plot(k_vals, no_drop_eig_face, label="Eigenfaces")
+	plt.plot(k_vals, drop_eig_face, label="Eigenfaces w/o first 3 components")
+	plt.axhline(y=fisher_accu, label="Fisherfaces")
+	plt.axhline(y=linear_accu, label="Linear Subspace")
+	plt.axhline(y=correlation_accu, label="Correlation")
+	plt.gca().legend(loc='lower right')  # show legend
+	# plt.figure(figsize=(15.0, 9.0))
+	fig.savefig("my_plot.png")
+	plt.figure()
+	plt.show()
+
+
+main()
